@@ -3,7 +3,6 @@
 //Parts of this sketch were taken from the keypad and servo sample sketches that comes with the keypad and servo libraries.
 
 //Uses https://github.com/adafruit/Adafruit-PWM-Servo-Driver-Library
-*/
 #include <Wire.h>
 #include <Adafruit_PWMServoDriver.h>
  
