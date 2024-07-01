@@ -17,7 +17,7 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 // have!
 
 // our servo # counter
-uint8_t servoCount = 3;
+uint8_t servoCount = 4;
 uint8_t servonum = 0;
 
 const int OPEN_ALL = 100;
@@ -29,7 +29,7 @@ boolean collectorIsOn = 0;
 int DC_spindown = 3000;
 
 const int NUMBER_OF_TOOLS = 3;
-const int NUMBER_OF_GATES = 6;
+const int NUMBER_OF_GATES = 4;
 
 String tools[NUMBER_OF_TOOLS] = {"Chop Saw","Table Saw","Sweep"}; //, "Floor Sweep"
 int voltSensor[NUMBER_OF_TOOLS] = {A1,A2,A3};
