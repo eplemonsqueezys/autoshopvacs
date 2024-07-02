@@ -17,7 +17,7 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 // have!
 
 // our servo # counter
-uint8_t servoCount = 4;
+uint8_t servoCount = 3;
 uint8_t servonum = 0;
 
 const int OPEN_ALL = 100;
@@ -29,9 +29,9 @@ boolean collectorIsOn = 0;
 int DC_spindown = 3000;
 
 const int NUMBER_OF_TOOLS = 3;
-const int NUMBER_OF_GATES = 4;
+const int NUMBER_OF_GATES = 6;
 
-String tools[NUMBER_OF_TOOLS] = {"Chop Saw","Table Saw","Sweep"}; //, "Floor Sweep"
+String tools[NUMBER_OF_TOOLS] = {"Chop Saw","Table Saw","Sweep"};
 int voltSensor[NUMBER_OF_TOOLS] = {A1,A2,A3};
 long int voltBaseline[NUMBER_OF_TOOLS] = {0,0,0};
 
@@ -79,6 +79,7 @@ void setup(){
   pinMode(dustCollectionRelayPin,OUTPUT);
   pwm.begin();
   pwm.setPWMFreq(60);  // Default is 1000mS
+  pinMode(manualSwitchPin, INPUT);
   
  //record baseline sensor settings
  //currently unused, but could be used for voltage comparison if need be.
@@ -93,6 +94,13 @@ void setup(){
 void loop(){
   // use later for button debouncing
   reading = digitalRead(manualSwitchPin);
+  if (digitalRead(manualSwitchPin) == HIGH ) {
+	  turnOnDustCollection();
+	  openGate(1);
+    openGate(2);
+    openGate(3);
+	  delay(1000);
+  }
 
   if (reading == HIGH && previous == LOW && millis() - time > debounce) {
     if (state == HIGH){
