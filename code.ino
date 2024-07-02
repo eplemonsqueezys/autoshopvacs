@@ -99,6 +99,7 @@ void loop(){
 	  openGate(1);
     openGate(2);
     openGate(3);
+    openGate(100);
 	  delay(1000);
   }
 
