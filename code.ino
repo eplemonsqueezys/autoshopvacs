@@ -1,215 +1,83 @@
-//Uses https://github.com/adafruit/Adafruit-PWM-Servo-Driver-Library
-#include <Wire.h>
-#include <Adafruit_PWMServoDriver.h>
- 
-// called this way, it uses the default address 0x40
-Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
-// you can also call it with a different address you want
-//Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(0x41);
+#include <Servo.h>
 
-// Depending on your servo make, the pulse width min and max may vary, you 
-// want these to be as small/large as possible without hitting the hard stop
-// for max range. You'll have to tweak them as necessary to match the servos you
-// have!
+Servo sawservo; // Create sawservo object
+Servo sweepservo; // Create sweepservo object
 
-// our servo # counter
-uint8_t servoCount = 3;
-uint8_t servonum = 0;
+int sawswitchPin = 5; // Pin the saw switch is connected to
+int sweepswitchPin = 4; // Pin the sweep switch is connected to
+const int dustCollectionRelayPin = 7; // Dust collection relay pin
+const int tablesawRelayPin = 3; // Table saw relay pin
 
-const int OPEN_ALL = 100;
-const int CLOSE_ALL = 99;
+int sawswitchState; // The state of the saw switch
+int sweepswitchState; // The state of the sweep switch
+boolean collectorIsOn = false; // If the collector is on or off
+boolean tablesawIsOn = false; // If the table saw is on or off
+int pos = 0; // Variable to store the servo position
 
-boolean buttonTriggered = 0;
-boolean powerDetected = 0;
-boolean collectorIsOn = 0;
-int DC_spindown = 3000;
-
-const int NUMBER_OF_TOOLS = 3;
-const int NUMBER_OF_GATES = 6;
-
-String tools[NUMBER_OF_TOOLS] = {"Chop Saw","Table Saw","Sweep"};
-int voltSensor[NUMBER_OF_TOOLS] = {A1,A2,A3};
-long int voltBaseline[NUMBER_OF_TOOLS] = {0,0,0};
-
-//DC right, Y, miter, bandsaw, saw Y, tablesaw, floor sweep
-//Set the throw of each gate separately, if needed
-int gateMinMax[NUMBER_OF_GATES][2] = {
-  /*open, close*/
-  {250,415},//DC right
-  {230,405},//Y
-  {230,405},//miter
-  {285,425},//chop Saw
-  {250,405},//saw y
-  {250,415},//floor sweep
-};
-
-//keep track of gates to be toggled ON/OFF for each tool
-int gates[NUMBER_OF_TOOLS][NUMBER_OF_GATES] = {
-  {1,0,1,0,0,0},
-  {1,1,0,0,1,1},
-  {1,1,0,1,0,0},
-};
-
-const int dustCollectionRelayPin = 11;
-const int manualSwitchPin = 12; //for button activated gate, currently NOT implemented
-
-int mVperAmp = 185; // use 100 for 20A Module and 66 for 30A Module
-double ampThreshold = .20;
-
-double Voltage = 0;
-double VRMS = 0;
-double AmpsRMS = 0;
-
-//button debouncing
-int state = HIGH;      // the current state of the output pin
-int reading;           // the current reading from the input pin
-int previous = LOW;    // the previous reading from the input pin
-
-// the follow variables are long's because the time, measured in miliseconds,
-// will quickly become a bigger number than can be stored in an int.
-long time = 0;         // the last time the output pin was toggled
-long debounce = 200;   // the debounce time, increase if the output flickers
-
-void setup(){ 
-  Serial.begin(9600);
-  pinMode(dustCollectionRelayPin,OUTPUT);
-  pwm.begin();
-  pwm.setPWMFreq(60);  // Default is 1000mS
-  pinMode(manualSwitchPin, INPUT);
-  
- //record baseline sensor settings
- //currently unused, but could be used for voltage comparison if need be.
-  delay(1000);
-  for(int i=0;i<NUMBER_OF_TOOLS;i++){
-    pinMode(voltSensor[i],INPUT);
-    voltBaseline[i] = analogRead(voltSensor[i]); 
-  }
-  
+void setup() {
+  sweepservo.attach(2); // Connects the sweepservo to pin 2
+  sawservo.attach(6); // Connects the sawservo to pin 6
+  pinMode(dustCollectionRelayPin, OUTPUT); // Sets dust collection relay pin as an output
+  pinMode(tablesawRelayPin, OUTPUT); // Sets table saw relay pin as an output
+  pinMode(sweepswitchPin, INPUT); // Sets sweep switch pin as an input
+  pinMode(sawswitchPin, INPUT); // Sets saw switch pin as an input
+  digitalWrite(dustCollectionRelayPin, LOW); // Initialize dust collection relay pin to LOW
+  digitalWrite(tablesawRelayPin, LOW); // Initialize table saw relay pin to LOW
+  Serial.begin(9600); // Start serial communication at 9600 baud rate
+  digitalWrite(dustCollectionRelayPin, HIGH); // Set dust collection relay pin to HIGH
+  sweepservo.write(90); // moves the sweep servo to closed position
+  delay(15); // waits 15 milisecounds to give the servo time to move to the position
+  sawservo.write(90); // move the saw servo to closed position
+  delay(5000); // Wait for 5 seconds
 }
 
-void loop(){
-  // use later for button debouncing
-  reading = digitalRead(manualSwitchPin);
-  if (digitalRead(manualSwitchPin) == HIGH ) {
-	  turnOnDustCollection();
-	  openGate(1);
-    openGate(2);
-    openGate(3);
-    openGate(100);
-	  delay(1000);
-  }
+void loop() {
+  delay(50); // Delay for 50ms to debounce switches
 
-  if (reading == HIGH && previous == LOW && millis() - time > debounce) {
-    if (state == HIGH){
-      state = LOW;
-     buttonTriggered = false;
-    } else{
-      state = HIGH;
-     buttonTriggered = true;
-    time = millis();    
+  sweepswitchState = digitalRead(sweepswitchPin); // Read the state of the sweep switch
+  sawswitchState = digitalRead(sawswitchPin); // Read the state of the saw switch
+
+  if (sweepswitchState == LOW) { // If sweep switch is pressed
+    Serial.println("Sweep Switch ON"); // Print message to serial
+    sweepservo.write(120); // Move sweepservo to 120 degrees
+    if (!collectorIsOn) { // If the dust collector is not on
+      Serial.println("turnOnDustCollection"); // Print message to serial
+      digitalWrite(dustCollectionRelayPin, LOW); // Turn on dust collection relay
+      collectorIsOn = true; // Update collector state to on
+    }
+  } else { // If sweep switch is not pressed
+    sweepservo.write(90); // Move sweepservo to 90 degrees
+    if (collectorIsOn && sawswitchState != LOW) { // If collector is on and saw switch is not pressed
+      Serial.println("Sweep Switch OFF"); // Print message to serial
+      Serial.println("turnOffDustCollection"); // Print message to serial
+      digitalWrite(dustCollectionRelayPin, HIGH); // Turn off dust collection relay
+      collectorIsOn = false; // Update collector state to off
     }
   }
-  previous = reading;
-   Serial.println("----------");
-   //loop through tools and check
-   int activeTool = 50;// a number that will never happen
-   for(int i=0;i<NUMBER_OF_TOOLS;i++){
-      if( checkForAmperageChange(i)){
-        activeTool = i;
-        exit;
-      }
-      if( i!=0){
-        if(checkForAmperageChange(0)){
-          activeTool = 0;
-          exit;
-        }
-      }
-   }
-  if(activeTool != 50){
-    // use activeTool for gate processing
-    if(collectorIsOn == false){
-      //manage all gate positions
-      for(int s=0;s<NUMBER_OF_GATES;s++){
-        int pos = gates[activeTool][s];
-        if(pos == 1){
-          openGate(s);    
-        } else {
-          closeGate(s);
-        }
-      }
-      turnOnDustCollection();
+
+  if (sawswitchState == LOW) { // If saw switch is pressed
+    Serial.println("Saw Switch ON"); // Print message to serial
+    sawservo.write(120); // Move sawservo to 120 degrees
+    digitalWrite(tablesawRelayPin, LOW); // Turn on table saw relay
+    delay(15); // Wait for 15ms for servo to move
+    if (!collectorIsOn) { // If the dust collector is not on
+      Serial.println("turnOnDustCollection"); // Print message to serial
+      digitalWrite(dustCollectionRelayPin, LOW); // Turn on dust collection relay
+      collectorIsOn = true; // Update collector state to on
+      digitalWrite(tablesawRelayPin, LOW); // Ensure table saw relay is on
+      delay(15); // Wait for 15ms for relay to activate
     }
-  } else{
-    if(collectorIsOn == true){
-        delay(DC_spindown);
-      turnOffDustCollection();  
+  } else { // If saw switch is not pressed
+    sawservo.write(90); // Move sawservo to 90 degrees
+    digitalWrite(tablesawRelayPin, HIGH); // Turn off table saw relay
+    delay(15); // Wait for 15ms for servo to move
+    if (collectorIsOn && sweepswitchState != LOW) { // If collector is on and sweep switch is not pressed
+      Serial.println("Saw Switch OFF"); // Print message to serial
+      Serial.println("turnOffDustCollection"); // Print message to serial
+      digitalWrite(dustCollectionRelayPin, HIGH); // Turn off dust collection relay
+      digitalWrite(tablesawRelayPin, HIGH); // Ensure table saw relay is off
+      collectorIsOn = false; // Update collector state to off
+      delay(15); // Wait for 15ms for relay to deactivate
     }
   }
-}
-boolean checkForAmperageChange(int which){
-   Voltage = getVPP(voltSensor[which]);
-   VRMS = (Voltage/2.0) *0.707; 
-   AmpsRMS = (VRMS * 1000)/mVperAmp;
-   Serial.print(tools[which]+": ");
-   Serial.print(AmpsRMS);
-   Serial.println(" Amps RMS");
-   if(AmpsRMS>ampThreshold){
-    return true;
-   }else{
-    return false; 
-   }
-}
-void turnOnDustCollection(){
-  Serial.println("turnOnDustCollection");
-  digitalWrite(dustCollectionRelayPin,1);
-  collectorIsOn = true;
-}
-void turnOffDustCollection(){
-  Serial.println("turnOffDustCollection");
-  digitalWrite(dustCollectionRelayPin,0);
-  collectorIsOn = false;
-}
- 
-float getVPP(int sensor)
-{
-  float result;
-  
-  int readValue;             //value read from the sensor
-  int maxValue = 0;          // store max value here
-  int minValue = 1024;          // store min value here
-  
-   uint32_t start_time = millis();
-   while((millis()-start_time) < 500) //sample for 1 Sec
-   {
-       readValue = analogRead(sensor);
-       // see if you have a new maxValue
-       if (readValue > maxValue) 
-       {
-           /*record the maximum sensor value*/
-           maxValue = readValue;
-       }
-       if (readValue < minValue) 
-       {
-           /*record the maximum sensor value*/
-           minValue = readValue;
-       }
-   }
-   
-   // Subtract min from max
-   result = ((maxValue - minValue) * 5.0)/1024.0;
-      
-   return result;
- }
-
-void closeGate(uint8_t num){
-  Serial.print("closeGate ");
-  Serial.println(num);
-  pwm.setPWM(num, 0, gateMinMax[num][1]);
-}
-void openGate(uint8_t num){
-  Serial.print("openGate ");
-  Serial.println(num);
-    pwm.setPWM(num, 0, gateMinMax[num][0]);
-    delay(100);
-    pwm.setPWM(num, 0, gateMinMax[num][0]-5);
 }
