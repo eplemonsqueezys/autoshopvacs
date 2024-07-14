@@ -19,8 +19,10 @@ int sawswitchPin = 5;             // Pin the saw switch is connected to
 int sweepswitchPin = 4;           // Pin the sweep switch is connected to
 
 const int dustCollectionRelayPin = 7;   // Dust collection relay pin
-const int chopsawRelayPin = 10;         // Chop saw relay pin          
+const int chopsawRelayPin = 10;         // Chop saw relay pin
+const int cncRelayPin = 12;             // CNC relay pin
 const int downdrafttableRelayPin = 13;  // Downdraft table relay pin
+const int tablesawRelayPin = 3;         // Table saw relay pin
 
 int chopsawswitchstate;    // State of the chop saw switch
 int cncswitchstate;        // State of the CNC switch
@@ -38,9 +40,11 @@ void setup() {
   pwm.begin();         // Initialize PWM servo driver
   pwm.setPWMFreq(60);  // Set PWM frequency to 60 Hz for analog servos
 
-  pinMode(chopsawRelayPin, OUTPUT);         // Set chop saw relay pin as output         
+  pinMode(chopsawRelayPin, OUTPUT);         // Set chop saw relay pin as output
+  pinMode(cncRelayPin, OUTPUT);             // Set CNC relay pin as output
   pinMode(downdrafttableRelayPin, OUTPUT);  // Set downdraft table relay pin as output
   pinMode(dustCollectionRelayPin, OUTPUT);  // Set dust collection relay pin as output
+  pinMode(tablesawRelayPin, OUTPUT);        // Set table saw relay pin as output
   pinMode(chopsawswitchPin, INPUT);         // Set chop saw switch pin as input
   pinMode(cncswitchPin, INPUT);             // Set CNC switch pin as input
   pinMode(downdrafttableSwitchPin, INPUT);  // Set downdraft table switch pin as input
@@ -48,9 +52,7 @@ void setup() {
   pinMode(sawswitchPin, INPUT);             // Set saw switch pin as input
 
   digitalWrite(dustCollectionRelayPin, HIGH);  // Initialize dust collection relay to HIGH (off)
-  digitalWrite(tablesawRelayPin, HIGH);        // Initialize table saw relay to HIGH (off)
   digitalWrite(chopsawRelayPin, HIGH);         // Initialize chop saw relay to HIGH (off)
-  digitalWrite(cncRelayPin, HIGH);             // Initialize CNC relay to HIGH (off)
   digitalWrite(downdrafttableRelayPin, HIGH);  // Initialize downdraft table relay to HIGH (off)
 
   Serial.begin(9600);              // Initialize serial communication at 9600 baud rate
@@ -94,7 +96,8 @@ void loop() {
       digitalWrite(dustCollectionRelayPin, LOW);  // Turn on dust collection
       collectorIsOn = true;                       // Set dust collector state to on
     }
-  } else {                                       // Sweep switch is not pressed
+  } else {
+    delay(3000);                                       // Sweep switch is not pressed
     pwm.setPWM(sweepServoChannel, 0, SERVOMIN);  // Close sweep servo
 
     if (collectorIsOn && sawswitchState != LOW) {  // If dust collector is on and saw switch is not pressed
@@ -141,8 +144,7 @@ void loop() {
   } else {                                     // CNC switch is not pressed
     pwm.setPWM(cncServoChannel, 0, SERVOMIN);  // Close CNC servo
 
-    if (collectorIsOn && cncswitchstate != LOW) { )  // If dust collector is on and CNC switch is not pressed
-      delay(3000);
+    if (collectorIsOn && cncswitchstate != LOW) {  // If dust collector is on and CNC switch is not pressed
       Serial.println("CNC Switch OFF");            // Print CNC switch OFF message to serial monitor
       Serial.println("turnOffDustCollection");     // Print turn off dust collection message
       digitalWrite(dustCollectionRelayPin, HIGH);  // Turn off dust collection
@@ -170,7 +172,6 @@ void loop() {
       Serial.println("Saw Switch OFF");              // Print saw switch OFF message to serial monitor
       Serial.println("turnOffDustCollection");       // Print turn off dust collection message
       digitalWrite(dustCollectionRelayPin, HIGH);    // Turn off dust collection
-      digitalWrite(tablesawRelayPin, HIGH);          // Ensure table saw relay is off
       collectorIsOn = false;                         // Set dust collector state to off
       delay(15);                                     // Short delay to allow relay to deactivate
     }
