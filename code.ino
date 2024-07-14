@@ -19,10 +19,8 @@ int sawswitchPin = 5;             // Pin the saw switch is connected to
 int sweepswitchPin = 4;           // Pin the sweep switch is connected to
 
 const int dustCollectionRelayPin = 7;   // Dust collection relay pin
-const int chopsawRelayPin = 10;         // Chop saw relay pin
-const int cncRelayPin = 12;             // CNC relay pin
+const int chopsawRelayPin = 10;         // Chop saw relay pin          
 const int downdrafttableRelayPin = 13;  // Downdraft table relay pin
-const int tablesawRelayPin = 3;         // Table saw relay pin
 
 int chopsawswitchstate;    // State of the chop saw switch
 int cncswitchstate;        // State of the CNC switch
@@ -40,11 +38,9 @@ void setup() {
   pwm.begin();         // Initialize PWM servo driver
   pwm.setPWMFreq(60);  // Set PWM frequency to 60 Hz for analog servos
 
-  pinMode(chopsawRelayPin, OUTPUT);         // Set chop saw relay pin as output
-  pinMode(cncRelayPin, OUTPUT);             // Set CNC relay pin as output
+  pinMode(chopsawRelayPin, OUTPUT);         // Set chop saw relay pin as output         
   pinMode(downdrafttableRelayPin, OUTPUT);  // Set downdraft table relay pin as output
   pinMode(dustCollectionRelayPin, OUTPUT);  // Set dust collection relay pin as output
-  pinMode(tablesawRelayPin, OUTPUT);        // Set table saw relay pin as output
   pinMode(chopsawswitchPin, INPUT);         // Set chop saw switch pin as input
   pinMode(cncswitchPin, INPUT);             // Set CNC switch pin as input
   pinMode(downdrafttableSwitchPin, INPUT);  // Set downdraft table switch pin as input
@@ -145,7 +141,8 @@ void loop() {
   } else {                                     // CNC switch is not pressed
     pwm.setPWM(cncServoChannel, 0, SERVOMIN);  // Close CNC servo
 
-    if (collectorIsOn && cncswitchstate != LOW) {  // If dust collector is on and CNC switch is not pressed
+    if (collectorIsOn && cncswitchstate != LOW) { )  // If dust collector is on and CNC switch is not pressed
+      delay(3000);
       Serial.println("CNC Switch OFF");            // Print CNC switch OFF message to serial monitor
       Serial.println("turnOffDustCollection");     // Print turn off dust collection message
       digitalWrite(dustCollectionRelayPin, HIGH);  // Turn off dust collection
@@ -157,19 +154,16 @@ void loop() {
   if (sawswitchState == LOW) {                 // Saw switch is pressed
     Serial.println("Saw Switch ON");           // Print saw switch ON message to serial monitor
     pwm.setPWM(sawServoChannel, 0, SERVOMAX);  // Open saw servo
-    digitalWrite(tablesawRelayPin, LOW);       // Turn on table saw
     delay(15);                                 // Short delay to allow servo to move
 
     if (!collectorIsOn) {                         // If dust collector is not already on
       Serial.println("turnOnDustCollection");     // Print turn on dust collection message
       digitalWrite(dustCollectionRelayPin, LOW);  // Turn on dust collection
       collectorIsOn = true;                       // Set dust collector state to on
-      digitalWrite(tablesawRelayPin, LOW);        // Ensure table saw relay is on
       delay(15);                                  // Short delay to allow relay to activate
     }
   } else {                                     // Saw switch is not pressed
     pwm.setPWM(sawServoChannel, 0, SERVOMIN);  // Close saw servo
-    digitalWrite(tablesawRelayPin, HIGH);      // Turn off table saw
     delay(15);                                 // Short delay to allow servo to move
 
     if (collectorIsOn && sweepswitchState != LOW) {  // If dust collector is on and sweep switch is not pressed
