@@ -5,7 +5,7 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();  // Create PWM servo dr
 
 #define SERVOMIN 150  // Minimum pulse length count (out of 4096)
 #define SERVOMAX 325  // Maximum pulse length count (out of 4096)
-// fat fart
+// fat fart funny
 #define sawServoChannel 2             // Define servo channel for saw servo
 #define sweepServoChannel 8           // Define servo channel for sweep servo
 #define chopsawServoChannel 1         // Define servo channel for chop saw
